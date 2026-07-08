@@ -85,7 +85,7 @@ La idea principal de esta separación es mantener el dominio desacoplado de Fast
 
 Para una descripción técnica más detallada del diseño, las capas, los patrones y la persistencia, ver:
 
-- [Documentación técnica](docs/ARCHITECTURE.md)
+- [Documentación técnica](docs/doc_tecnica.md)
 
 ## Patrones aplicados
 
