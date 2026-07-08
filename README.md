@@ -65,6 +65,7 @@ Construir una API orientada a objetos para organizar el vínculo entre solicitan
 - **Seguridad**: Argon2 para hash de contraseñas
 - **Configuración**: variables de entorno con `.env`
 - **Testing**: Pytest
+- **Pruebas de API**: Postman
 - **Contenedores**: Docker / Docker Compose
 - **CI**: GitHub Actions para linting y formato
 - **Documentación API**: OpenAPI / Swagger UI generada por FastAPI
