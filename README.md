@@ -1,4 +1,4 @@
-# ATHomeRed – API para atención domiciliaria
+# 🩺 ATHomeRed – API para atención domiciliaria
 
 ATHomeRed es una API REST desarrollada con **FastAPI** para modelar una red de atención domiciliaria que busca conectar familias (representadas por un **Responsable/Solicitante**) y profesionales del área de la salud domiciliaria, como **acompañantes terapéuticos** y **enfermeros/as**.
 
