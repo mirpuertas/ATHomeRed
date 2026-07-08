@@ -1,0 +1,11 @@
+# Directorio de versiones de Alembic
+# Las migraciones generadas se guardarán aquí
+
+# Para crear una nueva migración:
+# alembic revision --autogenerate -m "descripción del cambio"
+
+# Para aplicar migraciones:
+# alembic upgrade head
+
+# Para revertir:
+# alembic downgrade -1

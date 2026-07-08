@@ -1,0 +1,140 @@
+"""
+Test de integración: CatalogoRepository + Estrategias de Búsqueda
+
+Verifica que:
+1. El CatalogoRepository se integra correctamente con las estrategias
+2. La búsqueda por especialidad funciona con ID y nombre
+3. La validación de especialidades existe funciona
+
+Contexto: ATHomeRed - Plataforma de Acompañantes Terapéuticos y Enfermería
+"""
+
+import pytest
+from app.domain.entities.catalogo import FiltroBusqueda
+from app.domain.strategies.estrategia import BusquedaPorEspecialidad
+from app.infra.repositories.catalogo_repository import CatalogoRepository
+
+
+def test_busqueda_por_especialidad_con_id(
+    db_session, profesional_factory, especialidad_factory
+):
+    """
+    Test: Búsqueda por especialidad usando ID
+    GIVEN: Un acompañante terapéutico o enfermero con una especialidad específica
+    WHEN: Se busca por el ID de esa especialidad
+    THEN: Se encuentra el profesional
+
+    Ejemplo: Buscar todos los profesionales de "Acompañamiento Terapéutico"
+    """
+    from app.infra.repositories.profesional_repository import (
+        ProfesionalRepository,
+    )
+    
+    catalogo_repo = CatalogoRepository(db_session)
+    prof_repo = ProfesionalRepository(db_session)
+
+    especialidades = catalogo_repo.listar_especialidades()
+    if not especialidades:
+        pytest.skip("No hay especialidades en la base de datos")
+
+    especialidad = especialidades[0]
+
+    filtro = FiltroBusqueda(id_especialidad=especialidad.id)
+    estrategia = BusquedaPorEspecialidad()
+
+    resultados = estrategia.buscar(prof_repo, filtro)
+
+    assert isinstance(resultados, list)
+    print(
+        f"Búsqueda por ID {especialidad.id} ({especialidad.nombre}): {len(resultados)} profesionales"
+    )
+
+
+def test_busqueda_por_especialidad_con_nombre(db_session):
+    """
+    Test: Búsqueda por especialidad usando nombre
+    GIVEN: Profesionales con especialidades (Acompañamiento Terapéutico, Enfermería, etc.)
+    WHEN: Se busca por nombre de especialidad
+    THEN: Se encuentran los profesionales correctos
+
+    Ejemplo: Buscar "Enfermería" o "Acompañamiento Terapéutico"
+    """
+    from app.infra.repositories.profesional_repository import (
+        ProfesionalRepository,
+    )
+
+    catalogo_repo = CatalogoRepository(db_session)
+    prof_repo = ProfesionalRepository(db_session)
+
+    especialidades = catalogo_repo.listar_especialidades()
+    if not especialidades:
+        pytest.skip("No hay especialidades en la base de datos")
+
+    especialidad = especialidades[0]
+
+    filtro = FiltroBusqueda(nombre_especialidad=especialidad.nombre)
+    estrategia = BusquedaPorEspecialidad()
+
+    resultados = estrategia.buscar(prof_repo, filtro)
+
+    assert isinstance(resultados, list)
+    print(
+        f"Búsqueda por nombre '{especialidad.nombre}': {len(resultados)} profesionales"
+    )
+
+
+def test_validacion_especialidad_existe(db_session):
+    """
+    Test: Validación de que una especialidad existe
+    GIVEN: Un ID de especialidad
+    WHEN: Se busca en el catálogo
+    THEN: Se obtiene la especialidad o None
+    """
+
+    catalogo_repo = CatalogoRepository(db_session)
+
+    especialidad_invalida = catalogo_repo.obtener_especialidad_por_id(99999)
+    assert especialidad_invalida is None
+
+    especialidad_invalida = catalogo_repo.obtener_especialidad_por_nombre(
+        "NoExiste123"
+    )
+    assert especialidad_invalida is None
+
+    especialidades = catalogo_repo.listar_especialidades()
+    if especialidades:
+        esp = catalogo_repo.obtener_especialidad_por_id(especialidades[0].id)
+        assert esp is not None
+        assert esp.nombre == especialidades[0].nombre
+
+
+def test_resolucion_nombre_a_id(db_session):
+    """
+    Test: Conversión de nombre de especialidad a ID
+    GIVEN: Un nombre de especialidad
+    WHEN: Se busca en el catálogo
+    THEN: Se obtiene el ID correcto
+    """
+    catalogo_repo = CatalogoRepository(db_session)
+    especialidades = catalogo_repo.listar_especialidades()
+
+    if not especialidades:
+        pytest.skip("No hay especialidades en la base de datos")
+
+    especialidad_original = especialidades[0]
+
+    especialidad_encontrada = catalogo_repo.obtener_especialidad_por_nombre(
+        especialidad_original.nombre
+    )
+
+    assert especialidad_encontrada is not None
+    assert especialidad_encontrada.id == especialidad_original.id
+    assert especialidad_encontrada.nombre == especialidad_original.nombre
+
+    print(
+        f"'{especialidad_original.nombre}' → ID: {especialidad_encontrada.id}"
+    )
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

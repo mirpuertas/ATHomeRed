@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+tests/
+test-results/
+pytest.ini
+
+# Requirements adicionales
+requirements-dev.txt
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+docs/
+otros/
+
+# Docker
+docker/
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github/
+.pre-commit-config.yaml
+
+# Scripts de desarrollo
+scripts/
+run_server.py
+start_server.bat
+*.ps1
+
+# Archivos de entorno (se pasan con --env-file)
+.env
+.env.*
+
+# Archivos temporales
+*.log
+*.tmp

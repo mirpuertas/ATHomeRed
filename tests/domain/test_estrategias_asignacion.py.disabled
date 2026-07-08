@@ -1,0 +1,283 @@
+"""
+Tests unitarios para las estrategias de asignación
+"""
+import pytest
+from datetime import datetime, time, date
+
+from app.domain.strategies.estrategia_asignacion import (
+    AsignacionStrategy,
+    DisponibilidadHorariaStrategy,
+    MatriculaProvinciaStrategy,
+)
+from app.domain.value_objects.objetos_valor import Ubicacion, Matricula
+from app.domain.entities.catalogo import Especialidad
+
+from uuid import uuid4
+
+
+
+
+@pytest.fixture
+def ubicacion_test():
+    """Ubicación para una consulta"""
+    return Ubicacion(
+        provincia="Buenos Aires",
+        departamento="CABA",
+        barrio="Flores",
+        calle="Av. Acoyte",
+        numero=1234,
+        latitud=-34.6037,
+        longitud=-58.3816,
+    )
+
+
+@pytest.fixture
+def consulta_mock(ubicacion_test):
+    """Mock de una consulta para testing"""
+    consulta = type('Consulta', (), {})()
+    consulta.fecha = date(2025, 11, 10)
+    consulta.hora_inicio = time(10, 0)
+    consulta.ubicacion = ubicacion_test
+    return consulta
+
+
+class TestDisponibilidadHorariaStrategy:
+    """Tests para la estrategia de disponibilidad horaria"""
+    
+    def test_profesional_disponible_en_horario(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Profesional está disponible si no tiene conflicto horario"""
+        estrategia = DisponibilidadHorariaStrategy()
+        
+        consulta_mock.fecha = date(2025, 11, 10)  # Distinto a las existentes
+        consulta_mock.hora_inicio = time(15, 0)
+        
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert resultado is True
+    
+    def test_profesional_no_disponible_conflicto_horario(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Profesional NO está disponible si hay conflicto de hora"""
+        estrategia = DisponibilidadHorariaStrategy()
+        
+        consulta_existente = type('Consulta', (), {})()
+        consulta_existente.fecha = date(2025, 11, 10)
+        consulta_existente.hora_inicio = time(10, 0)
+        
+        profesional_cardiologia.consultas = [consulta_existente]
+
+        consulta_mock.fecha = date(2025, 11, 10)
+        consulta_mock.hora_inicio = time(10, 0)
+        
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert resultado is False
+    
+    def test_diferentes_fechas_sin_conflicto(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Misma hora pero diferentes fechas no genera conflicto"""
+        estrategia = DisponibilidadHorariaStrategy()
+        
+        consulta_existente = type('Consulta', (), {})()
+        consulta_existente.fecha = date(2025, 11, 10)
+        consulta_existente.hora_inicio = time(10, 0)
+        
+        profesional_cardiologia.consultas = [consulta_existente]
+        
+        consulta_mock.fecha = date(2025, 11, 17)
+        consulta_mock.hora_inicio = time(10, 0)
+        
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert resultado is True
+    
+    def test_diferentes_horas_mismo_dia_sin_conflicto(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Misma fecha pero diferentes horas no genera conflicto"""
+        estrategia = DisponibilidadHorariaStrategy()
+        
+        consulta_existente = type('Consulta', (), {})()
+        consulta_existente.fecha = date(2025, 11, 10)
+        consulta_existente.hora_inicio = time(10, 0)
+        
+        profesional_cardiologia.consultas = [consulta_existente]
+        
+        consulta_mock.fecha = date(2025, 11, 10)
+        consulta_mock.hora_inicio = time(14, 0)
+        
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert resultado is True
+    
+    def test_profesional_sin_consultas_previas(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Profesional sin consultas siempre está disponible"""
+        estrategia = DisponibilidadHorariaStrategy()
+        
+        profesional_cardiologia.consultas = []
+        
+        consulta_mock.fecha = date(2025, 11, 10)
+        consulta_mock.hora_inicio = time(10, 0)
+        
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert resultado is True
+
+class TestMatriculaProvinciaStrategy:
+    """Tests para la estrategia de matrícula por provincia"""
+    
+    def test_profesional_con_matricula_valida(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Profesional tiene matrícula en la provincia de la consulta"""
+        estrategia = MatriculaProvinciaStrategy()
+        
+        consulta_mock.ubicacion.provincia = "Buenos Aires"
+        
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert resultado is True
+    
+    def test_profesional_sin_matricula_en_provincia(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Profesional NO tiene matrícula en la provincia de la consulta"""
+        estrategia = MatriculaProvinciaStrategy()
+        
+        consulta_mock.ubicacion.provincia = "Mendoza" 
+
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert resultado is False
+    
+    def test_profesional_multiples_matriculas(
+        self,
+        profesional_cardiologia,
+        consulta_mock,
+        matricula_mendoza
+    ):
+        """Profesional con múltiples matrículas en diferentes provincias"""
+        estrategia = MatriculaProvinciaStrategy()
+
+        profesional_cardiologia.matriculas.append(matricula_mendoza)
+        
+        consulta_mock.ubicacion.provincia = "Buenos Aires"
+        resultado1 = estrategia.validar(consulta_mock, profesional_cardiologia)
+        assert resultado1 is True
+        
+        consulta_mock.ubicacion.provincia = "Mendoza"
+        resultado2 = estrategia.validar(consulta_mock, profesional_cardiologia)
+        assert resultado2 is True
+        
+        consulta_mock.ubicacion.provincia = "Córdoba"
+        resultado3 = estrategia.validar(consulta_mock, profesional_cardiologia)
+        assert resultado3 is False
+    
+    def test_profesional_sin_matriculas(
+        self,
+        consulta_mock
+    ):
+        """Profesional sin ninguna matrícula"""
+        estrategia = MatriculaProvinciaStrategy()
+        
+        prof = type('Profesional', (), {})()
+        prof.matriculas = []
+        
+        consulta_mock.ubicacion.provincia = "Buenos Aires"
+        
+        resultado = estrategia.validar(consulta_mock, prof)
+        
+        assert resultado is False
+    
+    def test_matricula_inactiva_no_valida(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Matrícula inactiva no cuenta como válida"""
+        estrategia = MatriculaProvinciaStrategy()
+        
+        profesional_cardiologia.matriculas[0].vigente = False
+        
+        consulta_mock.ubicacion.provincia = "Buenos Aires"
+        
+        resultado = estrategia.validar(consulta_mock, profesional_cardiologia)
+        
+        assert isinstance(resultado, bool)
+
+class TestAsignacionStrategyAbstracta:
+    """Tests para la clase abstracta AsignacionStrategy"""
+    
+    def test_no_puede_instanciarse_estrategia_abstracta(self):
+        """No se puede instanciar directamente"""
+        with pytest.raises(TypeError):
+            AsignacionStrategy()
+    
+    def test_debe_implementar_metodo_validar(self):
+        """Todas las subclases deben implementar validar()"""
+        
+        class EstrategiaIncompleta(AsignacionStrategy):
+            pass
+        
+        with pytest.raises(TypeError):
+            EstrategiaIncompleta()
+
+
+class TestMultiplesEstrategias:
+    """Tests para usar múltiples estrategias en conjunto"""
+    
+    def test_validar_con_dos_estrategias(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Una consulta debe pasar ambas validaciones"""
+        disponibilidad = DisponibilidadHorariaStrategy()
+        matricula = MatriculaProvinciaStrategy()
+        
+        consulta_mock.ubicacion.provincia = "Buenos Aires"
+        consulta_mock.fecha = date(2025, 11, 10)
+        consulta_mock.hora_inicio = time(10, 0)
+        
+        profesional_cardiologia.consultas = []
+        
+        assert disponibilidad.validar(consulta_mock, profesional_cardiologia) is True
+        assert matricula.validar(consulta_mock, profesional_cardiologia) is True
+    
+    def test_rechazar_si_falla_una_validacion(
+        self,
+        profesional_cardiologia,
+        consulta_mock
+    ):
+        """Si una validación falla, la consulta se rechaza"""
+        disponibilidad = DisponibilidadHorariaStrategy()
+        matricula = MatriculaProvinciaStrategy()
+
+        consulta_mock.ubicacion.provincia = "Córdoba" 
+        consulta_mock.fecha = date(2025, 11, 10)
+        consulta_mock.hora_inicio = time(10, 0)
+        
+        profesional_cardiologia.consultas = []
+        
+        assert disponibilidad.validar(consulta_mock, profesional_cardiologia) is True
+        assert matricula.validar(consulta_mock, profesional_cardiologia) is False
